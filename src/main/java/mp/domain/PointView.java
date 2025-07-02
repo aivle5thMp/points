@@ -27,8 +27,8 @@ public class PointView {
     @Column(nullable = false)
     private UUID userId;
     
-    private Double point;
-    private Double totalPoint;
+    private Integer point;
+    private Integer totalPoint;
     private String pointStatus;
     private LocalDateTime createdAt;
 }

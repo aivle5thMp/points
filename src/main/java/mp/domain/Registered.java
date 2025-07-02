@@ -9,10 +9,15 @@ import mp.infra.AbstractEvent;
 @ToString
 public class Registered extends AbstractEvent {
 
-    private Long id;
+    private UUID userId;
+    private UUID id;
     private String name;
     private String email;
     private String password;
     private String role;
     private Boolean isSubscribed;
+    public Integer getInitialPoint() {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'getInitialPoint'");
+    }
 }

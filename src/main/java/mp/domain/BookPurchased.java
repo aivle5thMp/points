@@ -10,6 +10,7 @@ import mp.infra.AbstractEvent;
 public class BookPurchased extends AbstractEvent {
 
     private Long id;
-    private String userId;
-    private String bookId;
+    private UUID userId;
+    private UUID bookId;
+    private int pointUsed;
 }

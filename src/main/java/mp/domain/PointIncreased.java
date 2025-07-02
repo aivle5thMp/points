@@ -16,8 +16,8 @@ public class PointIncreased extends AbstractEvent {
 
     private UUID id;
     private UUID userId;
-    private Double point;
-    private Double totalPoint;
+    private Integer point;
+    private Integer totalPoint;
     private LocalDateTime createdAt;
 
     public PointIncreased(Point aggregate) {

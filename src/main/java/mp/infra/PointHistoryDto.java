@@ -14,8 +14,8 @@ import mp.domain.PointView;
 @AllArgsConstructor
 @Builder
 public class PointHistoryDto  {
-    private Double point;
-    private Double totalPoint;
+    private Integer point;
+    private Integer totalPoint;
     private String pointStatus;
     private LocalDateTime createdAt;
     
