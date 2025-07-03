@@ -24,6 +24,8 @@ spring:
     console:
       enabled: true
       path: /h2-console
+      settings:
+        web-allow-others: true
   jpa:
     properties:
       hibernate:
@@ -69,6 +71,19 @@ server:
 
 spring:
   profiles: docker
+  kafka:
+    bootstrap-servers: my-kafka:9092
+  datasource:
+    url: jdbc:h2:mem:pointsdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: 1234
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+      settings:
+        web-allow-others: true
   jpa:
     properties:
       hibernate:
@@ -91,10 +106,10 @@ spring:
       bindings:
         event-in:
           group: points
-          destination: mp
+          destination: payment.points.v1
           contentType: application/json
         event-out:
-          destination: mp
+          destination: payment.points.v1
           contentType: application/json
 
 
