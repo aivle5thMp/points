@@ -1,27 +1,20 @@
 package mp.domain;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
 import java.util.UUID;
-
 import javax.persistence.*;
-import lombok.Data;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
-import mp.PointsApplication;
-import mp.domain.PointDecreased;
-import mp.domain.PointIncreased;
 
 @Entity
-@Getter @Setter
 @Table(name = "Point_table")
-@Data
-//<<< DDD / Aggregate Root
+@Getter @Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Point {
 
     @Id
@@ -30,93 +23,45 @@ public class Point {
     
     private UUID userId;
 
+    // 포인트 변동량 (적립 시 양수, 사용 시 음수)
     private Integer point;
 
+    // 변동 후 누적 포인트
     private Integer totalPoint;
+
+    // 변동 사유 (SIGNUP, PAYMENT, USED)
+    private String reason;
 
     private LocalDateTime createdAt;
 
-    public static PointsRepository repository() {
-        PointsRepository pointRepository = PointsApplication.applicationContext.getBean(
-            PointsRepository.class
-        );
-        return pointRepository;
+    public static Point createSignupPoint(UUID userId, int initialPoint) {
+        return Point.builder()
+                .userId(userId)
+                .point(initialPoint)
+                .totalPoint(initialPoint)
+                .reason("SIGNUP")
+                .createdAt(LocalDateTime.now())
+                .build();
     }
 
-    //<<< Clean Arch / Port Method
-    public static void pointIncrease(Purchased purchased) {
-        //implement business logic here:
-
-        /** Example 1:  new item 
-        Point point = new Point();
-        repository().save(point);
-
-        PointIncreased pointIncreased = new PointIncreased(point);
-        pointIncreased.publishAfterCommit();
-        */
-
-        /** Example 2:  finding and process
-        
-
-        repository().findById(purchased.get???()).ifPresent(point->{
-            
-            point // do something
-            repository().save(point);
-
-            PointIncreased pointIncreased = new PointIncreased(point);
-            pointIncreased.publishAfterCommit();
-
-         });
-        */
-
+    public static Point createPaymentPoint(UUID userId, int amount) {
+        int pointToAdd = (int) (amount);
+        return Point.builder()
+                .userId(userId)
+                .point(pointToAdd)
+                .totalPoint(pointToAdd) // 이전 totalPoint는 조회해서 더해줘야 함
+                .reason("PAYMENT")
+                .createdAt(LocalDateTime.now())
+                .build();
     }
 
-    //>>> Clean Arch / Port Method
-    //<<< Clean Arch / Port Method
-    public static void pointIncrease(Registered registered) {
-        repository().findByUserId(registered.getUserId()).ifPresentOrElse(
-        point -> {
-            // 이미 포인트 계정이 있으면 추가 적립
-            point.setPoint(point.getPoint() + registered.getInitialPoint());
-            point.setTotalPoint(point.getTotalPoint() + registered.getInitialPoint());
-            point.setCreatedAt(LocalDateTime.now());
-            repository().save(point);
-
-            PointIncreased event = new PointIncreased(point);
-            event.publishAfterCommit();
-        },
-        () -> {
-            // 없으면 신규 생성
-            Point point = new Point();
-            point.setUserId(registered.getUserId());
-            point.setPoint(registered.getInitialPoint());
-            point.setTotalPoint(registered.getInitialPoint());
-            point.setCreatedAt(LocalDateTime.now());
-            repository().save(point);
-
-            PointIncreased event = new PointIncreased(point);
-            event.publishAfterCommit();
-        }
-    );
+    public static Point createUsedPoint(UUID userId, int usedPoint) {
+        return Point.builder()
+                .userId(userId)
+                .point(-usedPoint)
+                .totalPoint(-usedPoint) // 이전 totalPoint는 조회해서 계산해줘야 함
+                .reason("USED")
+                .createdAt(LocalDateTime.now())
+                .build();
     }
-
-    //>>> Clean Arch / Port Method
-    //<<< Clean Arch / Port Method
-    public static void pointDecrease(BookPurchased bookPurchased) {
-        repository().findByUserId(bookPurchased.getUserId()).ifPresent(point -> {
-        if (point.getPoint() < bookPurchased.getPointUsed()) {
-            throw new IllegalArgumentException("포인트가 부족합니다.");
-        }
-        point.setPoint(point.getPoint() - bookPurchased.getPointUsed());
-        point.setCreatedAt(LocalDateTime.now());
-        repository().save(point);
-
-        PointDecreased event = new PointDecreased(point);
-        event.publishAfterCommit();
-    });
-
-    }
-    //>>> Clean Arch / Port Method
-
 }
-//>>> DDD / Aggregate Root

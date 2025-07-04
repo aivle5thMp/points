@@ -1,13 +1,8 @@
 package mp.domain;
 
-import java.time.LocalDateTime;
-import java.util.Date;
 import java.util.UUID;
-
 import javax.transaction.Transactional;
-
 import org.springframework.stereotype.Service;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -16,75 +11,94 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class PointsService {
     private final PointsRepository pointsRepository;
-    private final PointHistoryRepository pointHistoryRepository;
-
     
+    /**
+     * 사용자의 현재 포인트 잔액 조회
+     */
+    public PointBalanceDto getPointBalance(UUID userId) {
+        Point latestPoint = pointsRepository.findFirstByUserIdOrderByCreatedAtDescIdDesc(userId)
+                .orElse(Point.builder()
+                        .userId(userId)
+                        .point(0)
+                        .totalPoint(0)
+                        .reason("초기화")
+                        .build());
+        
+        return PointBalanceDto.builder()
+                .userId(userId)
+                .lastPointChange(latestPoint.getPoint())
+                .totalPoint(latestPoint.getTotalPoint())
+                .lastReason(latestPoint.getReason())
+                .updatedAt(latestPoint.getCreatedAt())
+                .build();
+    }
+
+    /**
+     * 회원가입 포인트 적립
+     */
     @Transactional
-    public void addPointForSignup(UUID userId) {
-        int initialPoint = 1000;
-        // 1. 신규 회원 포인트 적립 로직 (DB에 저장)
-        log.info("회원가입 포인트 적립: userId={}, point={}", userId, initialPoint);
-        Point point = pointsRepository.findByUserId(userId).orElseGet(() -> {
-            Point p = new Point();
-            p.setUserId(userId);
-            p.setPoint(0);
-            p.setTotalPoint(0);
-            p.setCreatedAt(LocalDateTime.now());
-            return p;
-        });
-        point.setPoint(initialPoint); // 현재 이벤트의 포인트 (ex. 100)
-        point.setTotalPoint(point.getTotalPoint() + initialPoint); // 누적 포인트
-        point.setCreatedAt(LocalDateTime.now());
+    public Point addPointForSignup(UUID userId, int initialPoint) {
+        Point point = Point.createSignupPoint(userId, initialPoint);
         pointsRepository.save(point);
-
-        PointHistory history = new PointHistory();
-        history.setUserId(userId);
-        history.setChangedPoint(initialPoint);
-        history.setReason("회원가입");
-        history.setCreatedAt(LocalDateTime.now());
-        history.setTotalPoint(point.getTotalPoint());
-        pointHistoryRepository.save(history);
+        log.info("회원가입 포인트 적립 완료: userId={}, point={}", userId, point.getPoint());
+        return point;
     }
 
+    /**
+     * 결제 포인트 적립 (결제 금액의 1.05% 적립)
+     */
     @Transactional
-    public void addPointForPayment(UUID userId, int point) {
-        // 2. 결제 시 포인트 적립
-        log.info("포인트 결제 적립: userId={}, point={}", userId, point);
-        Point pointEntity = pointsRepository.findByUserId(userId)
-                .orElseThrow(() -> new IllegalArgumentException("회원 정보가 없습니다: " + userId));
-        pointEntity.setPoint(point); // 이번에 적립된 포인트(이벤트 단위)
-        pointEntity.setTotalPoint(pointEntity.getTotalPoint() + point); // 누적 총합
-        pointEntity.setCreatedAt(LocalDateTime.now());
-        pointsRepository.save(pointEntity);
-
-        PointHistory history = new PointHistory();
-        history.setUserId(userId);
-        history.setChangedPoint(point);
-        history.setReason("결제 적립");
-        history.setCreatedAt(LocalDateTime.now());
-        history.setTotalPoint(pointEntity.getTotalPoint());
-        pointHistoryRepository.save(history);
+    public Point addPointForPayment(UUID userId, int amount) {
+        // 이전 누적 포인트 조회
+        int previousTotal = getCurrentTotalPoint(userId);
+        
+        Point point = Point.createPaymentPoint(userId, amount);
+        point.setTotalPoint(previousTotal + point.getPoint());
+        pointsRepository.save(point);
+        
+        log.info("결제 포인트 적립 완료: userId={}, point={}, totalPoint={}", 
+                userId, point.getPoint(), point.getTotalPoint());
+        return point;
     }
 
-    public void usePointForBook(UUID userId, int pointUsed) {
-        // 3. 책 구매 시 포인트 차감
-        log.info("책 구매 포인트 차감: userId={}, pointUsed={}", userId, pointUsed);
-        Point point = pointsRepository.findByUserId(userId)
-                .orElseThrow(() -> new IllegalArgumentException("회원 정보가 없습니다: " + userId));
-        if (point.getTotalPoint() < pointUsed) {
-            throw new IllegalArgumentException("포인트가 부족합니다.");
+    /**
+     * 책 구매 포인트 사용
+     */
+    @Transactional
+    public Point usePointForBook(UUID userId, int pointToUse) {
+        // 최신 포인트 이력 조회
+        Point latestPoint = pointsRepository.findFirstByUserIdOrderByCreatedAtDescIdDesc(userId)
+                .orElseThrow(() -> new IllegalArgumentException("포인트 내역이 없는 사용자입니다: " + userId));
+        
+        int currentTotal = latestPoint.getTotalPoint();
+        if (currentTotal < pointToUse) {
+            throw new IllegalArgumentException(
+                String.format("포인트가 부족합니다. 현재:%d, 필요:%d", currentTotal, pointToUse));
         }
-        point.setPoint(-pointUsed); // 이번 이벤트에서 차감된 포인트
-        point.setTotalPoint(point.getTotalPoint() - pointUsed); // 누적 포인트 차감
-        point.setCreatedAt(LocalDateTime.now());
-        pointsRepository.save(point);
 
-        PointHistory history = new PointHistory();
-        history.setUserId(userId);
-        history.setChangedPoint(-pointUsed);
-        history.setReason("책 구매 차감");
-        history.setCreatedAt(LocalDateTime.now());
-        history.setTotalPoint(point.getTotalPoint());
-        pointHistoryRepository.save(history);
+        Point point = Point.createUsedPoint(userId, pointToUse);
+        point.setTotalPoint(currentTotal + point.getPoint()); // point는 음수라 더하기
+        pointsRepository.save(point);
+        
+        log.info("포인트 사용 완료: userId={}, usedPoint={}, totalPoint={}", 
+                userId, pointToUse, point.getTotalPoint());
+        return point;
+    }
+
+    /**
+     * 사용자의 현재 총 포인트 조회
+     */
+    public int getCurrentTotalPoint(UUID userId) {
+        return pointsRepository.findFirstByUserIdOrderByCreatedAtDescIdDesc(userId)
+                .map(Point::getTotalPoint)
+                .orElse(0);
+    }
+
+    /**
+     * 포인트 사용 가능 여부 확인
+     */
+    public boolean canUsePoint(UUID userId, int pointToUse) {
+        int currentTotal = getCurrentTotalPoint(userId);
+        return currentTotal >= pointToUse;
     }
 }

@@ -1,20 +1,9 @@
 server:
-  port: 8080
+  port: 8087
 
 spring:
   application:
     name: points
-  kafka:
-    bootstrap-servers: localhost:9092
-    consumer:
-      group-id: points-service
-      auto-offset-reset: earliest
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
----
-
-spring:
-  profiles: default
   datasource:
     url: jdbc:h2:mem:pointsdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
     driver-class-name: org.h2.Driver
@@ -32,6 +21,13 @@ spring:
         show_sql: true
         format_sql: true
         implicit_naming_strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyComponentPathImpl
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: points-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
   cloud:
     stream:
       kafka:
@@ -46,26 +42,18 @@ spring:
                 value:
                   serde: org.apache.kafka.common.serialization.Serdes$StringSerde
       bindings:
-        event-in:
-          group: points
-#<<< EDA / Topic Name
-          destination: mp
-#>>> EDA / Topic Name
+        payment-in:
+          group: points-service
+          destination: payment.points.v1
           contentType: application/json
-        event-out:
-#<<< EDA / Topic Name
-          destination: mp
-#>>> EDA / Topic Name
+        signup-in:
+          group: points-service
+          destination: user.signup.v1
           contentType: application/json
-
-logging:
-  level:
-    org.hibernate.type: trace
-    org.springframework.cloud: debug
-
-
-server:
-  port: 8087
+        book-in:
+          group: points-service
+          destination: book.purchased.v1
+          contentType: application/json
 
 ---
 
@@ -104,12 +92,15 @@ spring:
                 value:
                   serde: org.apache.kafka.common.serialization.Serdes$StringSerde
       bindings:
-        event-in:
-          group: points
+        payment-in:
+          group: points-service
           destination: payment.points.v1
           contentType: application/json
-        event-out:
-          destination: payment.points.v1
+        signup-in:
+          group: points-service
+          destination: user.signup.v1
           contentType: application/json
-
-
+        book-in:
+          group: points-service
+          destination: book.purchased.v1
+          contentType: application/json

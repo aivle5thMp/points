@@ -6,12 +6,16 @@ import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.SubscribableChannel;
 
 public interface KafkaProcessor {
-    String INPUT = "event-in";
-    String OUTPUT = "event-out";
+    String PAYMENT_INPUT = "payment-in";
+    String SIGNUP_INPUT = "signup-in";
+    String BOOK_INPUT = "book-in";
 
-    @Input(INPUT)
-    SubscribableChannel inboundTopic();
+    @Input(PAYMENT_INPUT)
+    SubscribableChannel paymentTopic();
 
-    @Output(OUTPUT)
-    MessageChannel outboundTopic();
+    @Input(SIGNUP_INPUT)
+    SubscribableChannel signupTopic();
+
+    @Input(BOOK_INPUT)
+    SubscribableChannel bookTopic();
 }

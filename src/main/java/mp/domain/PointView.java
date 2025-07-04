@@ -20,15 +20,18 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class PointView {
-
     @Id
-    private UUID id;
-
-    @Column(nullable = false)
     private UUID userId;
     
-    private Integer point;
-    private Integer totalPoint;
-    private String pointStatus;
-    private LocalDateTime createdAt;
+    private Integer lastPointChange;  // 마지막 포인트 변동량 (+500, -500 등)
+    private Integer totalPoint;       // 현재 사용 가능한 총 포인트
+    private String lastReason;        // 마지막 변동 사유 (SIGNUP, PAYMENT, USED)
+    private LocalDateTime updatedAt;  // 마지막 업데이트 시간
+
+    public void applyPointChange(Point point) {
+        this.lastPointChange = point.getPoint();
+        this.totalPoint = point.getTotalPoint();
+        this.lastReason = point.getReason();
+        this.updatedAt = LocalDateTime.now();
+    }
 }

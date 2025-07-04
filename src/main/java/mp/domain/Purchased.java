@@ -1,6 +1,6 @@
 package mp.domain;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
 import lombok.*;
 import mp.domain.*;
@@ -11,9 +11,9 @@ import mp.infra.AbstractEvent;
 public class Purchased extends AbstractEvent {
 
     private UUID id;
-    private String userId;
+    private UUID userId;
     private String item;
-    private Long amount;
+    private Integer amount;
     private String status;
-    private LocalDate createdAt;
+    private LocalDateTime createdAt;
 }
